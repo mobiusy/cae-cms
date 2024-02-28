@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: cae-cms
+spec:
+  replicas: 1 # Single node deployment
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+      - name: minio
+        image: minio/minio:latest
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - name: minio-data
+          mountPath: /data
+        env:
+        - name: MINIO_ACCESS_KEY
+          value: "cae-cms"
+        - name: MINIO_SECRET_KEY
+          value: "cae-cms"
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+      volumes:
+      - name: minio-data
+        hostPath:
+          path: /data/minio # Adjust path as needed
+          type: DirectoryOrCreate
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  namespace: cae-cms
+spec:
+  selector:
+    app: minio
+  type: NodePort # Exposes service on a random node port
+  ports:
+  - port: 9000
+    targetPort: 9000
+    nodePort: 30002 # Change this port if needed

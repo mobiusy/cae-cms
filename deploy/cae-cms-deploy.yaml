@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: cae-cms
+  name: cae-cms
+spec:
+  selector:
+    matchLabels:
+      app: cae-cms
+  template:
+    metadata:
+      labels:
+        app: cae-cms
+    spec:
+      containers:
+        - name: cae-cms
+          image: cae-cms:v1.0
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 3000
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: cae-cms
+  namespace: cae-cms
+spec:
+  selector:
+    app: cae-cms
+  type: NodePort
+  ports:
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30003

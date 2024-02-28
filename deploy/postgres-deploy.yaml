@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-volume
+  namespace: cae-cms
+  labels:
+    type: local
+    app: postgres
+spec:
+  # storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: /data/postgresql
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: cae-cms
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  # storageClassName: manual
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: cae-cms
+spec:
+  replicas: 1 # Single node deployment
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16.2
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          env:
+            - name: POSTGRES_USER
+              value: "cae-cms"
+            - name: POSTGRES_PASSWORD
+              value: "cae-cms"
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: cae-cms
+spec:
+  selector:
+    app: postgres
+  type: NodePort
+  ports:
+  - port: 5432
+    targetPort: 5432
+    nodePort: 30001
