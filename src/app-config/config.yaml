@@ -1,0 +1,33 @@
+# server port
+port: 13000
+
+# s3 storage config
+s3:
+  accessDomain: "http://minio.51vr.local"
+  bucket: "wdp5-backend-dev"
+  region: "us-east-1"
+  endpoint: "http://minio.51vr.local"
+  forcePathStyle: true
+  accessKeyId: "admin"
+  secretAccessKey: "YWRtaW4K"
+
+# db config
+relationDB:
+    type: 'postgresql' # mysql | postgresql
+    hostsPool:
+      - postgres:5432
+    dbName: "cae-cms"
+    dbUser: "demo"
+    dbPwd: "abc123!"
+
+redis:
+  type: "standalone" # standalone-单机，sentinel-哨兵
+  redisServer: "10.66.12.98"
+  redisPort: 32470
+  redisPassword: "dzyxDWTMlfjbtPxQBMOYzTlAu0MI3s9x"
+  redisdb: 5
+  name: "" # master group name
+  sentinels:
+    - host: ""
+      port: 0
+  sentinelPassword: ""
