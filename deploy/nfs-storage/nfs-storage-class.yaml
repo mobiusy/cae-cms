@@ -1,0 +1,12 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: share-storage
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true" #将nfs设置成默认存储类
+provisioner: nfs-client #这里的值要和nfs-provisioner文件中PROVISIONER_NAME的值保持一致 
+parameters:
+  #pathPattern: "${.PVC.namespace}-${.PVC.name}"  #可以指定在nfs机器上产生的文件夹名称，默认是namespace−{pvcName}-${pvName}
+  archiveOnDelete: "true"  #删除pv的时候，pv的内容是否要备份
+reclaimPolicy: Retain      #回收策略-手动回收
+allowVolumeExpansion: true #允许扩容

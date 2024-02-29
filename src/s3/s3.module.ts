@@ -3,10 +3,11 @@ import { S3Service } from './s3.service';
 import { S3Controller } from './s3.controller';
 import { S3Client } from '@aws-sdk/client-s3';
 import { AppConfigService } from 'src/app-config/app-config.service';
+import { S3AdminController } from './s3-admin.controller';
 
 @Global()
 @Module({
-  controllers: [S3Controller],
+  controllers: [S3Controller, S3AdminController],
   providers: [
     S3Service,
     {

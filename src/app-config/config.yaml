@@ -21,10 +21,21 @@ relationDB:
     dbPwd: "abc123!"
 
 redis:
+  # type: "standalone" # standalone-单机，sentinel-哨兵
+  # redisServer: "redis-service"
+  # redisPort: 6379
+  # redisPassword: "DcT4ahiDUVZeMU1xMAiW"
+  # redisdb: 5
+  # name: "" # master group name
+  # sentinels:
+  #   - host: ""
+  #     port: 0
+  # sentinelPassword: ""
+
   type: "standalone" # standalone-单机，sentinel-哨兵
-  redisServer: "10.66.12.98"
-  redisPort: 32470
-  redisPassword: "dzyxDWTMlfjbtPxQBMOYzTlAu0MI3s9x"
+  redisServer: "10.66.9.70"
+  redisPort: 30004
+  redisPassword: "DcT4ahiDUVZeMU1xMAiW"
   redisdb: 5
   name: "" # master group name
   sentinels:

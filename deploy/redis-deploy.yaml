@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: cae-cms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:6.2-alpine  # Adjust version as needed
+        ports:
+        - containerPort: 6379
+        env:
+        - name: REDIS_PASSWORD
+          value: "DcT4ahiDUVZeMU1xMAiW"
+        # Optional: Configure persistence using volumes and claims
+        # volumeMounts:
+        # - name: redis-data
+        #   mountPath: /data
+      # Volumes (uncomment if using persistence)
+      # volumes:
+      # - name: redis-data
+      #   persistentVolumeClaim:
+      #     claimName: redis-pvc
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: cae-cms
+spec:
+  selector:
+    app: redis
+  type: NodePort
+  ports:
+  - port: 6379
+    targetPort: 6379
+    nodePort: 30004
