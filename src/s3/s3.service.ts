@@ -155,12 +155,6 @@ export class S3Service {
 
   generateFileKey(originalname: string, fileCategory: FileCategoryEnum) {
     const prefix = S3_PATH_PREFIX[fileCategory];
-    if (
-      fileCategory === FileCategoryEnum.WDP_OFFLINE_PACKAGE ||
-      fileCategory === FileCategoryEnum.WDP_DOWNLOADER
-    ) {
-      return `${prefix}${originalname}`;
-    }
     // append random string to file name
     const { filename, extension } = this.extractOriginName(originalname);
     let key = `${prefix}${filename}_${nanoid(10)}`;

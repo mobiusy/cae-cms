@@ -1,3 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cae-cms-app-config
+  namespace: cae-cms
+data:
+  config.yaml: |
+    port: 13000
+
+    s3:
+      accessDomain: "http://127.0.0.1:30002"
+      bucket: "cae-cms"
+      region: "us-east-1"
+      endpoint: "http://minio-service:9000"
+      forcePathStyle: true
+      accessKeyId: "cae-cms"
+      secretAccessKey: "30cc1mu5fYJkF3L2j2iY"
+
+    relationDB:
+        type: 'postgresql' # mysql | postgresql
+        hostsPool:
+          - postgres-service:5432
+        dbName: "cae-cms"
+        dbUser: "demo"
+        dbPwd: "abc123!"
+
+    redis:
+      type: "standalone" # standalone-单机，sentinel-哨兵
+      redisServer: "redis-service"
+      redisPort: 6379
+      redisPassword: "DcT4ahiDUVZeMU1xMAiW"
+      redisdb: 5
+      name: ""
+      sentinels:
+        - host: ""
+          port: 0
+      sentinelPassword: ""
+
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,7 +60,14 @@ spec:
               memory: "128Mi"
               cpu: "500m"
           ports:
-            - containerPort: 3000
+            - containerPort: 13000
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/dist/app-config
+      volumes:
+        - name: app-config
+          configMap:
+            name: cae-cms-app-config
 
 ---
 
@@ -34,6 +81,6 @@ spec:
     app: cae-cms
   type: NodePort
   ports:
-  - port: 3000
-    targetPort: 3000
-    nodePort: 30003
+  - port: 13000
+    targetPort: 13000
+    nodePort: 30005

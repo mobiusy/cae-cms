@@ -1,3 +1,45 @@
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: minio-pv
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: /run/desktop/mnt/host/e/workspace/local-pv/minio
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - docker-desktop
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: cae-cms
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: local-storage
+
+---
+
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,9 +57,17 @@ spec:
     spec:
       containers:
       - name: minio
-        image: minio/minio:latest
+        image: minio/minio:RELEASE.2024-02-26T09-33-48Z.fips
         ports:
-        - containerPort: 9000
+        - name: tcp-9000
+          containerPort: 9000
+        - name: tcp-9001
+          containerPort: 9001
+        args:
+        - server
+        - /data
+        - --console-address
+        - ":9001"
         volumeMounts:
         - name: minio-data
           mountPath: /data
@@ -25,16 +75,15 @@ spec:
         - name: MINIO_ACCESS_KEY
           value: "cae-cms"
         - name: MINIO_SECRET_KEY
-          value: "cae-cms"
+          value: "30cc1mu5fYJkF3L2j2iY"
         resources:
           limits:
-            memory: "128Mi"
+            memory: "1024Mi"
             cpu: "500m"
       volumes:
-      - name: minio-data
-        hostPath:
-          path: /data/minio # Adjust path as needed
-          type: DirectoryOrCreate
+        - name: minio-data
+          persistentVolumeClaim:
+            claimName: minio-pvc
 
 ---
 apiVersion: v1
@@ -45,8 +94,15 @@ metadata:
 spec:
   selector:
     app: minio
-  type: NodePort # Exposes service on a random node port
+  type: NodePort
   ports:
-  - port: 9000
+  - name: http-9000
+    protocol: TCP
+    port: 9000
     targetPort: 9000
-    nodePort: 30002 # Change this port if needed
+    nodePort: 30002
+  - name: http-9001
+    protocol: TCP
+    port: 9001
+    targetPort: 9001
+    nodePort: 30003

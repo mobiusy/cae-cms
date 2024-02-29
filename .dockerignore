@@ -1,0 +1,7 @@
+/node_modules
+/deploy
+/.vscode
+/.git
+/.docker
+/dist
+/test

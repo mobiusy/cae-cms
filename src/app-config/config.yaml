@@ -3,13 +3,13 @@ port: 13000
 
 # s3 storage config
 s3:
-  accessDomain: "http://minio.51vr.local"
-  bucket: "wdp5-backend-dev"
+  accessDomain: "http://127.0.0.1:30002"
+  bucket: "cae-cms"
   region: "us-east-1"
-  endpoint: "http://minio.51vr.local"
+  endpoint: "http://127.0.0.1:30002"
   forcePathStyle: true
-  accessKeyId: "admin"
-  secretAccessKey: "YWRtaW4K"
+  accessKeyId: "cae-cms"
+  secretAccessKey: "30cc1mu5fYJkF3L2j2iY"
 
 # db config
 relationDB:
@@ -33,7 +33,7 @@ redis:
   # sentinelPassword: ""
 
   type: "standalone" # standalone-单机，sentinel-哨兵
-  redisServer: "10.66.9.70"
+  redisServer: "127.0.0.1"
   redisPort: 30004
   redisPassword: "DcT4ahiDUVZeMU1xMAiW"
   redisdb: 5
