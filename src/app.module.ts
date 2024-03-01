@@ -6,9 +6,29 @@ import { S3Module } from './s3/s3.module';
 import { StatisticModule } from './statistic/statistic.module';
 import configuration from './app-config/configuration';
 import { RedisModule } from '@nestjs-modules/ioredis';
+import { HealthModule } from './health/health.module';
+import { PrismaModule, PrismaServiceOptions } from 'nestjs-prisma';
 
 @Module({
   imports: [
+    PrismaModule.forRootAsync({
+      isGlobal: true,
+      imports: [AppConfigModule],
+      inject: [AppConfigService],
+      useFactory: (_config: AppConfigService) => {
+        const config: PrismaServiceOptions = {
+          prismaOptions: {
+            datasources: {
+              db: {
+                url: _config.relationalDBConnectStr,
+              },
+            },
+            // log: ['query', 'info', 'warn', 'error'],
+          },
+        };
+        return config;
+      },
+    }),
     RedisModule.forRootAsync({
       useFactory: (configService: AppConfigService) => {
         return {
@@ -29,6 +49,7 @@ import { RedisModule } from '@nestjs-modules/ioredis';
     AppConfigModule,
     S3Module,
     StatisticModule,
+    HealthModule,
   ],
   controllers: [],
   providers: [AppConfigService],

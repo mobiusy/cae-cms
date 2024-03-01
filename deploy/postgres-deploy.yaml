@@ -1,12 +1,3 @@
-kind: StorageClass
-apiVersion: storage.k8s.io/v1
-metadata:
-  name: local-storage
-provisioner: kubernetes.io/no-provisioner
-volumeBindingMode: WaitForFirstConsumer
-
----
-
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -66,6 +57,7 @@ spec:
       containers:
         - name: postgres
           image: postgres:16.2
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5432
           volumeMounts:
@@ -75,7 +67,7 @@ spec:
             - name: POSTGRES_USER
               value: "cae-cms"
             - name: POSTGRES_PASSWORD
-              value: "cae-cms"
+              value: "90CpY0GGa8Q5nmg5LKZD"
           resources:
             limits:
               memory: "1Gi"

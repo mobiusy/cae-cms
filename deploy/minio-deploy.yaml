@@ -58,6 +58,17 @@ spec:
       containers:
       - name: minio
         image: minio/minio:RELEASE.2024-02-26T09-33-48Z.fips
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
         ports:
         - name: tcp-9000
           containerPort: 9000

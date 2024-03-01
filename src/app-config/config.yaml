@@ -3,42 +3,26 @@ port: 13000
 
 # s3 storage config
 s3:
-  accessDomain: "http://127.0.0.1:30002"
-  bucket: "cae-cms"
-  region: "us-east-1"
-  endpoint: "http://127.0.0.1:30002"
+  accessDomain: http://127.0.0.1:30002
+  bucket: cae-cms
+  region: us-east-1
+  endpoint: http://127.0.0.1:30002
   forcePathStyle: true
-  accessKeyId: "cae-cms"
-  secretAccessKey: "30cc1mu5fYJkF3L2j2iY"
+  accessKeyId: cae-cms
+  secretAccessKey: 30cc1mu5fYJkF3L2j2iY
 
 # db config
 relationDB:
-    type: 'postgresql' # mysql | postgresql
+    type: postgresql # mysql | postgresql
     hostsPool:
-      - postgres:5432
+      - 127.0.0.1:30001
     dbName: "cae-cms"
-    dbUser: "demo"
-    dbPwd: "abc123!"
+    dbUser: "cae-cms"
+    dbPwd: "90CpY0GGa8Q5nmg5LKZD"
 
 redis:
-  # type: "standalone" # standalone-单机，sentinel-哨兵
-  # redisServer: "redis-service"
-  # redisPort: 6379
-  # redisPassword: "DcT4ahiDUVZeMU1xMAiW"
-  # redisdb: 5
-  # name: "" # master group name
-  # sentinels:
-  #   - host: ""
-  #     port: 0
-  # sentinelPassword: ""
-
   type: "standalone" # standalone-单机，sentinel-哨兵
   redisServer: "127.0.0.1"
   redisPort: 30004
   redisPassword: "DcT4ahiDUVZeMU1xMAiW"
   redisdb: 5
-  name: "" # master group name
-  sentinels:
-    - host: ""
-      port: 0
-  sentinelPassword: ""

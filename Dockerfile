@@ -1,5 +1,6 @@
 FROM node:20.11.1-slim as build
 
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime  && echo 'Asia/Shanghai' >/etc/timezone
 RUN yarn config set registry https://registry.npmmirror.com
 
 # 第一阶段：复制代码，安装依赖，构建
@@ -21,4 +22,4 @@ COPY --from=build /app/package.json ./package.json
 
 EXPOSE 13000
 # 启动命令
-CMD ["node", "/app/dist/main.js"]
+CMD ["yarn", "start:prod"]

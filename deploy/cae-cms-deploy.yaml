@@ -21,8 +21,8 @@ data:
         hostsPool:
           - postgres-service:5432
         dbName: "cae-cms"
-        dbUser: "demo"
-        dbPwd: "abc123!"
+        dbUser: "cae-cms"
+        dbPwd: "90CpY0GGa8Q5nmg5LKZD"
 
     redis:
       type: "standalone" # standalone-单机，sentinel-哨兵
@@ -55,6 +55,7 @@ spec:
       containers:
         - name: cae-cms
           image: cae-cms:v1.0
+          imagePullPolicy: IfNotPresent
           resources:
             limits:
               memory: "128Mi"
@@ -64,6 +65,15 @@ spec:
           volumeMounts:
             - name: app-config
               mountPath: /app/dist/app-config
+          livenessProbe:
+            failureThreshold: 5
+            httpGet:
+              path: /v1/health
+              port: 13000
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
       volumes:
         - name: app-config
           configMap:
