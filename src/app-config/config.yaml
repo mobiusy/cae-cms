@@ -1,7 +1,7 @@
-# server port
+# 服务端口
 port: 13000
 
-# s3 storage config
+# s3 配置
 s3:
   # 外部访问地址
   accessDomain: http://127.0.0.1:30002
@@ -13,7 +13,7 @@ s3:
   accessKeyId: cae-cms
   secretAccessKey: 30cc1mu5fYJkF3L2j2iY
 
-# db config
+# 数据库配置
 relationDB:
     type: postgresql # mysql | postgresql
     hostsPool:
@@ -22,6 +22,7 @@ relationDB:
     dbUser: "cae-cms"
     dbPwd: "90CpY0GGa8Q5nmg5LKZD"
 
+# redis 配置
 redis:
   type: "standalone" # standalone-单机，sentinel-哨兵
   redisServer: "127.0.0.1"
