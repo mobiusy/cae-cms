@@ -1,7 +1,7 @@
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { LoggingInterceptor } from '@app/base-lib/interceptors/logging.interceptor';
 import { TimeoutInterceptor } from '@app/base-lib/interceptors/timeout.interceptor';
 import { ResponseInterceptor } from '@app/base-lib/interceptors/response.interceptor';
@@ -16,6 +16,10 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  app.enableVersioning({
+    type: VersioningType.URI,
+  });
 
   if (process.env.NODE_ENV !== 'prod') {
     const config = new DocumentBuilder()
