@@ -13,6 +13,7 @@ import {
   DeleteObjectsCommand,
   CopyObjectCommand,
   CopyObjectCommandOutput,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import {
@@ -22,22 +23,28 @@ import {
 } from '@nestjs/common';
 import {
   CreateFileFromUrlReqDTO,
+  HeadBucketResDTO,
+  ListBucketObjectsReqDTO,
+  ListBucketObjectsResDTO,
+  ListBucketResDTO,
   PresignedUploadInfoReqDTO,
   UploadInfoReqDTO,
   UploadInfoResDTO,
 } from './dto/s3.dto';
 import { FileCategoryEnum, S3_PATH_PREFIX } from './dto/file-type.dto';
 import { nanoid } from 'nanoid';
-import { isURL } from 'class-validator';
+import { isNumber, isNumberString, isURL } from 'class-validator';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { S3Exception } from '@app/base-lib';
+import { PrismaService } from 'nestjs-prisma';
 
 @Injectable()
 export class S3Service {
   private readonly logger = new Logger(S3Service.name);
   constructor(
-    private readonly s3Client: S3Client,
-    private readonly configService: AppConfigService,
+    private readonly _s3Client: S3Client,
+    private readonly _configService: AppConfigService,
+    private readonly _prisma: PrismaService,
   ) {}
 
   //#Business Api
@@ -49,7 +56,7 @@ export class S3Service {
     const originalname = url.split('/').pop();
     const key = this.generateFileKey(originalname, fileCategory);
 
-    const { bucket } = this.configService.s3;
+    const { bucket } = this._configService.s3;
     const response = await fetch(url);
     const body = await response.arrayBuffer();
     const mimetype = response.headers.get('content-type');
@@ -64,7 +71,7 @@ export class S3Service {
     });
 
     try {
-      await this.s3Client.send(cmd);
+      await this._s3Client.send(cmd);
       const accessUrl = await this.getObjectUrl(key);
       return {
         key,
@@ -83,7 +90,7 @@ export class S3Service {
   }
 
   /**
-   *
+   * 获取预上传链接
    * @param dto
    * @returns
    */
@@ -91,7 +98,7 @@ export class S3Service {
     try {
       const { fileCategory, fileName: originalname } = dto;
       const key = this.generateFileKey(originalname, fileCategory);
-      const s3Config = this.configService.s3;
+      const s3Config = this._configService.s3;
       const presignedUrl = await this.createPresignedUrl(s3Config.bucket, key);
       const accessUrl = this.toPublicAccessUrl(presignedUrl);
 
@@ -120,12 +127,12 @@ export class S3Service {
     dto: UploadInfoReqDTO,
     file: Express.Multer.File,
   ): Promise<UploadInfoResDTO> {
-    const { originalname, mimetype, buffer } = file;
+    const { originalname, mimetype, buffer, size } = file;
     const { fileCategory } = dto;
 
-    // extract file name and file extension from original name
+    // 生成key
     const key = this.generateFileKey(originalname, fileCategory);
-    const { bucket } = this.configService.s3;
+    const { bucket } = this._configService.s3;
 
     const cmd = new PutObjectCommand({
       Bucket: bucket,
@@ -135,8 +142,18 @@ export class S3Service {
     });
 
     try {
-      await this.s3Client.send(cmd);
+      await this._s3Client.send(cmd);
       const accessUrl = await this.getObjectUrl(key);
+      // 上传记录数据库留痕
+      await this._prisma.uploadRecord.create({
+        data: {
+          ossKey: key,
+          originalname,
+          mimetype,
+          size,
+          userId: 1, // 实际应用应从请求中获取用户信息, 此处仅用作演示
+        }
+      })
       return {
         key,
         accessUrl,
@@ -155,7 +172,7 @@ export class S3Service {
 
   generateFileKey(originalname: string, fileCategory: FileCategoryEnum) {
     const prefix = S3_PATH_PREFIX[fileCategory];
-    // append random string to file name
+    // 文件名附加随机字符串
     const { filename, extension } = this.extractOriginName(originalname);
     let key = `${prefix}${filename}_${nanoid(10)}`;
     if (extension) {
@@ -164,6 +181,11 @@ export class S3Service {
     return key;
   }
 
+  /**
+   * 获取文件名
+   * @param originalname 
+   * @returns 
+   */
   private extractOriginName(originalname: string) {
     const parts = originalname.split('.');
     let extension = '';
@@ -183,7 +205,7 @@ export class S3Service {
     if (!key) {
       return key;
     }
-    const { bucket } = this.configService.s3;
+    const { bucket } = this._configService.s3;
     try {
       await this.deleteObject(bucket, key);
       return key;
@@ -213,7 +235,7 @@ export class S3Service {
       return key;
     }
     // get object url by key
-    const { bucket } = this.configService.s3;
+    const { bucket } = this._configService.s3;
     const url = await this.createPresignedUrl(bucket, key);
 
     return this.toPublicAccessUrl(url);
@@ -225,7 +247,7 @@ export class S3Service {
    * @returns
    */
   toPublicAccessUrl(presignedUrl: string) {
-    const { accessDomain } = this.configService.s3;
+    const { accessDomain } = this._configService.s3;
     const url = new URL(presignedUrl);
     return `${accessDomain}${url.pathname}`;
   }
@@ -234,13 +256,33 @@ export class S3Service {
 
   //#region S3 Basic Api
 
-  public async listBuckets() {
-    const data = await this.s3Client.send(new ListBucketsCommand({}));
-    return data.Buckets;
+  /**
+   * 列出所有bucket
+   * @returns 
+   */
+  public async listBuckets(): Promise<ListBucketResDTO> {
+    const data = await this._s3Client.send(new ListBucketsCommand({}));
+    const res = new ListBucketResDTO();
+    res.list = [];
+    if (data.Buckets?.length) {
+      for (const item of data.Buckets) {
+        res.list.push({
+          name: item.Name,
+          creationDate: item.CreationDate,
+        });
+      }
+    }
+    
+    return res;
   }
 
-  public async headBucket(bucket: string) {
-    const res = {
+  /**
+   * bucket是否存在
+   * @param bucket 
+   * @returns 
+   */
+  public async headBucket(bucket: string): Promise<HeadBucketResDTO> {
+    const res: HeadBucketResDTO = {
       bucket,
       isExist: false,
     };
@@ -248,27 +290,31 @@ export class S3Service {
       Bucket: bucket,
     });
     try {
-      await this.s3Client.send(cmd);
+      await this._s3Client.send(cmd);
       res.isExist = true;
       return res;
     } catch (error) {
       if (error instanceof S3ServiceException) {
+        // 404, 不存在
         if (error.$metadata.httpStatusCode === 404) {
           return res;
         }
-        console.log(`S3ServiceException`);
-        console.log(error);
+
+        throw new S3Exception(error.message, {
+          cause: error,
+        });
       }
       throw error;
     }
   }
 
-  public async createBucket(bucket: string) {
+
+  public async createBucket(bucket: string): Promise<boolean> {
     const cmd = new CreateBucketCommand({
       Bucket: bucket,
     });
-    const data = await this.s3Client.send(cmd);
-    return data;
+    await this._s3Client.send(cmd);
+    return true;
   }
 
   /**
@@ -276,7 +322,7 @@ export class S3Service {
    * @param bucket
    * @returns
    */
-  public async setBucketPublicReadPolicy(bucket: string) {
+  public async setBucketPublicReadPolicy(bucket: string): Promise<boolean> {
     const cmd = new PutBucketPolicyCommand({
       Bucket: bucket,
       Policy: JSON.stringify({
@@ -292,21 +338,26 @@ export class S3Service {
         ],
       }),
     });
-    const data = await this.s3Client.send(cmd);
-    return data;
+    await this._s3Client.send(cmd);
+    return true;
   }
 
-  public async deleteBucket(bucket: string) {
+  /**
+   * 删除存储桶
+   * @param bucket 
+   * @returns 
+   */
+  public async deleteBucket(bucket: string): Promise<boolean> {
     const cmd = new DeleteBucketCommand({
       Bucket: bucket,
     });
-    const data = await this.s3Client.send(cmd);
-    return data;
+     await this._s3Client.send(cmd);
+    return true;
   }
 
   public async emptyBucket(bucket: string) {
     const listObjectsCommand = new ListObjectsCommand({ Bucket: bucket });
-    const listObjectsResult = await this.s3Client.send(listObjectsCommand);
+    const listObjectsResult = await this._s3Client.send(listObjectsCommand);
     const objects = listObjectsResult.Contents;
     const objectIdentifiers = objects.map((o) => ({ Key: o.Key }));
     const deleteObjectsCommand = new DeleteObjectsCommand({
@@ -314,20 +365,55 @@ export class S3Service {
       Delete: { Objects: objectIdentifiers },
     });
 
-    return this.s3Client.send(deleteObjectsCommand);
+    return this._s3Client.send(deleteObjectsCommand);
   }
 
-  public async listObjects(bucket: string) {
-    const data = await this.s3Client.send(
-      new ListObjectsCommand({
-        Bucket: bucket,
-      }),
-    );
-    return data;
+  public async listObjects(dto: ListBucketObjectsReqDTO): Promise<ListBucketObjectsResDTO> {
+    const {bucket, prefix, maxKeys, nextContinuationToken } = dto;
+    const cmd = new ListObjectsV2Command({
+      Bucket: bucket,
+    });
+    if (prefix) {
+      cmd.input.Prefix = prefix;
+    }
+    if (maxKeys && isNumberString(maxKeys) && Number(maxKeys) > 0) {
+      cmd.input.MaxKeys = Number(maxKeys);
+    }
+    if (nextContinuationToken) {
+      cmd.input.ContinuationToken = nextContinuationToken
+    }
+    try {
+      const res = new ListBucketObjectsResDTO();
+      const { Contents, IsTruncated, NextContinuationToken, KeyCount } = await this._s3Client.send(cmd);
+      res.isTruncated = IsTruncated;
+      res.keyCount = KeyCount;
+      res.nextContinuationToken = NextContinuationToken,
+      res.list = [];
+      if (Contents?.length) {
+        for (const item of Contents) {
+          res.list.push({
+            key: item.Key,
+            lastModified: item.LastModified,
+            eTag: item.ETag,
+            size: item.Size,
+          })
+        }
+      }
+
+      return res;
+    } catch (error) {
+      throw new S3Exception(
+        error.message,
+        {
+          cause: error,
+        }
+      )
+    }
+
   }
 
   private async deleteObject(bucket: string, key: string) {
-    const data = await this.s3Client.send(
+    const data = await this._s3Client.send(
       new DeleteObjectCommand({
         Bucket: bucket,
         Key: key,
@@ -341,7 +427,7 @@ export class S3Service {
     key: string,
     body: PutObjectCommandInput['Body'],
   ) {
-    const data = await this.s3Client.send(
+    const data = await this._s3Client.send(
       new PutObjectCommand({
         Bucket: bucket,
         Key: key,
@@ -351,20 +437,27 @@ export class S3Service {
     return data;
   }
 
-  public async createPresignedUrl(bucket: string, key: string, expires = 60) {
+  /**
+   * 生成预签名文件地址
+   * @param bucket 存储桶
+   * @param key 文件key
+   * @param expires 链接过期时间
+   * @returns 
+   */
+  public async createPresignedUrl(bucket: string, key: string, expires = 60): Promise<string> {
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
     });
-    return getSignedUrl(this.s3Client, command, { expiresIn: expires });
+    return getSignedUrl(this._s3Client, command, { expiresIn: expires });
   }
 
   public async copyObject(
     ossKey: string,
     targetKey: string,
   ): Promise<CopyObjectCommandOutput> {
-    const { bucket } = this.configService.s3;
-    const data = await this.s3Client.send(
+    const { bucket } = this._configService.s3;
+    const data = await this._s3Client.send(
       new CopyObjectCommand({
         Bucket: bucket,
         Key: targetKey,

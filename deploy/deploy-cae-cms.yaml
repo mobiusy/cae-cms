@@ -36,8 +36,49 @@ data:
           port: 0
       sentinelPassword: ""
 
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: cae-cms-pv
+spec:
+  capacity:
+    storage: 1Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: /run/desktop/mnt/host/e/workspace/local-pv/cae-cms-logs
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - docker-desktop
 
 ---
+
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cae-cms-logs-pvc
+  namespace: cae-cms
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: local-storage
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -54,7 +95,7 @@ spec:
     spec:
       containers:
         - name: cae-cms
-          image: cae-cms:v1.0
+          image: cae-cms:v1.3.2
           imagePullPolicy: IfNotPresent
           resources:
             limits:
@@ -65,12 +106,21 @@ spec:
           volumeMounts:
             - name: app-config
               mountPath: /app/dist/app-config
+            - name: cae-cms-logs
+              mountPath: /app/logs
           livenessProbe:
-            failureThreshold: 5
+            failureThreshold: 3
             httpGet:
-              path: /v1/health
+              path: /health
               port: 13000
               scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            failureThreshold: 3
+            tcpSocket:
+              port: 13000
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
@@ -78,6 +128,9 @@ spec:
         - name: app-config
           configMap:
             name: cae-cms-app-config
+        - name: cae-cms-logs
+          persistentVolumeClaim:
+            claimName: cae-cms-logs-pvc
 
 ---
 

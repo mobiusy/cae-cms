@@ -9,6 +9,15 @@ import { RedisModule } from '@nestjs-modules/ioredis';
 import { HealthModule } from './health/health.module';
 import { PrismaModule, PrismaServiceOptions } from 'nestjs-prisma';
 
+
+import {
+  WinstonModule,
+  WinstonModuleOptions,
+  utilities as nestWinstonModuleUtilities,
+} from 'nest-winston';
+import DailyRotateFile = require('winston-daily-rotate-file');
+import winston from 'winston';
+
 @Module({
   imports: [
     PrismaModule.forRootAsync({
@@ -23,7 +32,7 @@ import { PrismaModule, PrismaServiceOptions } from 'nestjs-prisma';
                 url: _config.relationalDBConnectStr,
               },
             },
-            // log: ['query', 'info', 'warn', 'error'],
+            log: ['query', 'info', 'warn', 'error'],
           },
         };
         return config;
@@ -50,7 +59,47 @@ import { PrismaModule, PrismaServiceOptions } from 'nestjs-prisma';
     S3Module,
     StatisticModule,
     HealthModule,
+    WinstonModule.forRoot({
+      exitOnError: false,
+      transports: [
+        new winston.transports.Console({
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.ms(),
+            nestWinstonModuleUtilities.format.nestLike('ACE-CMS', {
+              colors: true,
+              prettyPrint: true,
+            }),
+          ),
+        }),
+        new DailyRotateFile({
+          filename: 'logs/combined-%DATE%.log',
+          datePattern: 'YYYY-MM-DD',
+          zippedArchive: true,
+          maxSize: '20m',
+          maxFiles: '7d',
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json(),
+          ),
+        }),
+        new DailyRotateFile({
+          filename: 'logs/error-%DATE%.log',
+          datePattern: 'YYYY-MM-DD',
+          zippedArchive: true,
+          maxSize: '20m',
+          maxFiles: '7d',
+          level: 'error',
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json(),
+          ),
+        }),
+        // other transports...
+      ],
+    }),
   ],
+
   controllers: [],
   providers: [AppConfigService],
 })

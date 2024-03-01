@@ -24,20 +24,12 @@ model User {
 }
 
 model UploadRecord {
-  id        Int      @id @default(autoincrement())
-  ossKey    String
-  createdAt DateTime @default(now())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-}
-
-model PageViewStatistics {
-  id        Int      @id @default(autoincrement())
-  path      String
-  count     Int      @default(0)
-  year      String
-  month     String
-  day       String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  ossKey       String
+  originalname String?
+  mimetype     String?
+  size         Int?
+  createdAt    DateTime @default(now())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
 }

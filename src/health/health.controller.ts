@@ -6,7 +6,7 @@ import {
   PrismaHealthIndicator,
 } from '@nestjs/terminus';
 import { RedisOptions, Transport } from '@nestjs/microservices';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { PrismaService } from 'nestjs-prisma';
 
@@ -22,6 +22,9 @@ export class HealthController {
   ) {}
 
   @Get()
+  @ApiOperation({
+    summary: '健康检查',
+  })
   @HealthCheck()
   check() {
     return this._health.check([
@@ -29,7 +32,7 @@ export class HealthController {
       () =>
         this._micorService.pingCheck<RedisOptions>('Redis', {
           transport: Transport.REDIS,
-          options: this._configService.redis,
+          options: this._configService.redisConfig,
         }),
     ]);
   }

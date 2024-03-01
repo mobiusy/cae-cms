@@ -1,7 +1,9 @@
-/node_modules
-/deploy
-/.vscode
-/.git
-/.docker
-/dist
-/test
+node_modules
+deploy
+.vscode
+.git
+.docker
+dist
+test
+logs
+.env
