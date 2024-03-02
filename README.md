@@ -43,6 +43,7 @@ $ yarn run start:prod
 ```bash
 # 执行部署脚本
 $ chmod +x ./deploy/deploy.sh
+$ ./deploy/deploy.sh
 ```
 
 ## 查看接口文档
