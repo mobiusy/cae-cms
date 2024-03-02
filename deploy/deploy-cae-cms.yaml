@@ -95,7 +95,7 @@ spec:
     spec:
       containers:
         - name: cae-cms
-          image: cae-cms:v1.3.2
+          image: cae-cms:v1.4.0
           imagePullPolicy: IfNotPresent
           resources:
             limits:

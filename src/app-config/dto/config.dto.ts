@@ -31,10 +31,3 @@ export interface Redis {
   sentinels: RedisNode[];
   sentinelPassword: string;
 }
-
-export interface ACE {
-  port: number;
-  s3: S3;
-  relationalDB: RelationalDB;
-  redis: Redis;
-}
