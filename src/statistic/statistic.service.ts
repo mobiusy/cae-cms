@@ -14,10 +14,6 @@ export class StatisticService {
     return pv;
   }
 
-  findAll() {
-    return `This action returns all statistic`;
-  }
-
   async find(path: string): Promise<FindPVResDto> {
     const pv = await this.redis.hget(this.PV_KEY, path);
     return {
