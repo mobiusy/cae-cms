@@ -3,6 +3,28 @@
 
 CMS 内容管理系统
 
+## 目录结构
+
+```
+├── Dockerfile
+├── README.md
+├── deploy            # k8s 部署脚本
+├── libs              # 公共模块及基础设施
+├── logs              # 日志
+├── nest-cli.json     # 项目配置
+├── package.json      # 项目依赖
+├── src               # 项目源码
+│   ├── app-config   # 服务配置模块
+│   ├── db           # 数据库schema 及 incremental
+│   ├── health       # 健康检查模块
+│   ├── main.ts      # 程序主入口
+│   ├── s3           # S3模块
+│   └── statistic    # 统计模块
+├── test              # 测试配置
+├── ...
+
+```
+
 ## 安装
 
 ```bash
