@@ -8,10 +8,10 @@ data:
     port: 13000
 
     s3:
-      accessDomain: "http://127.0.0.1:30002"
+      accessDomain: "http://10.66.9.70:30002"
       bucket: "cae-cms"
       region: "us-east-1"
-      endpoint: "http://minio-service:9000"
+      endpoint: "http://10.66.9.70:30002"
       forcePathStyle: true
       accessKeyId: "cae-cms"
       secretAccessKey: "30cc1mu5fYJkF3L2j2iY"

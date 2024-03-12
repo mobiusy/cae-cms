@@ -68,6 +68,13 @@ $ chmod +x ./deploy/deploy.sh
 $ ./deploy/deploy.sh
 ```
 
+## 初始化数据库
+```bash
+# 初始化数据库
+$  yarn prisma migrate deploy
+```
+
+
 ## 查看接口文档
 
 1. 本地启动   

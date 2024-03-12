@@ -89,6 +89,7 @@ export class UploadInfoReqDTO extends PickType(PresignedUploadInfoReqDTO, [
 export class UploadInfoResDTO extends PickType(PresignedUploadInfoResDTO, [
   'key',
   'accessUrl',
+  'presignedUrl',
 ]) {}
 
 export class CreateFileFromUrlReqDTO {

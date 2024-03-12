@@ -62,6 +62,18 @@ export class S3Controller {
     return this._s3Service.uploadFile(body, file);
   }
 
+  @Post('url')
+  @ApiOperation({
+    summary: '获取文件地址',
+    description: '通过key获取文件访问地址',
+  })
+  @ApiOkResponse({
+    type: PresignedUploadInfoResDTO,
+  })
+  async getFileUrl(@Query() query: OSSFileKeyDTO) {
+    return this._s3Service.getObjectUrl(query.key);
+  }
+
   @Get('delete')
   @ApiOperation({
     summary: '删除oss文件',

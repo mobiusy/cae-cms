@@ -14,6 +14,7 @@ import {
   CopyObjectCommand,
   CopyObjectCommandOutput,
   ListObjectsV2Command,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import {
@@ -28,6 +29,7 @@ import {
   ListBucketObjectsResDTO,
   ListBucketResDTO,
   PresignedUploadInfoReqDTO,
+  PresignedUploadInfoResDTO,
   UploadInfoReqDTO,
   UploadInfoResDTO,
 } from './dto/s3.dto';
@@ -37,6 +39,7 @@ import { isNumber, isNumberString, isURL } from 'class-validator';
 import { AppConfigService } from 'src/app-config/app-config.service';
 import { S3Exception } from '@app/base-lib';
 import { PrismaService } from 'nestjs-prisma';
+import { S3InvalidKeyException } from '@app/base-lib/errors/s3-invalid-key-exception';
 
 @Injectable()
 export class S3Service {
@@ -72,10 +75,11 @@ export class S3Service {
 
     try {
       await this._s3Client.send(cmd);
-      const accessUrl = await this.getObjectUrl(key);
+      const { presignedUrl, accessUrl } = await this.getObjectUrl(key);
       return {
         key,
         accessUrl,
+        presignedUrl,
       };
     } catch (error) {
       this.logger.error('upload oss file error');
@@ -143,7 +147,7 @@ export class S3Service {
 
     try {
       await this._s3Client.send(cmd);
-      const accessUrl = await this.getObjectUrl(key);
+      const { presignedUrl, accessUrl } = await this.getObjectUrl(key);
       // 上传记录数据库留痕
       await this._prisma.uploadRecord.create({
         data: {
@@ -152,11 +156,12 @@ export class S3Service {
           mimetype,
           size,
           userId: 1, // 实际应用应从请求中获取用户信息, 此处仅用作演示
-        }
-      })
+        },
+      });
       return {
         key,
         accessUrl,
+        presignedUrl,
       };
     } catch (error) {
       this.logger.error('upload oss file error');
@@ -183,8 +188,8 @@ export class S3Service {
 
   /**
    * 获取文件名
-   * @param originalname 
-   * @returns 
+   * @param originalname
+   * @returns
    */
   private extractOriginName(originalname: string) {
     const parts = originalname.split('.');
@@ -226,19 +231,23 @@ export class S3Service {
    * @param key
    * @returns
    */
-  async getObjectUrl(key: string): Promise<string | null> {
+  async getObjectUrl(key: string): Promise<PresignedUploadInfoResDTO> {
     if (!key) {
       return null;
     }
 
     if (isURL(key)) {
-      return key;
+      throw new S3InvalidKeyException(`"${key}" is not an invalid oss key`);
     }
     // get object url by key
     const { bucket } = this._configService.s3;
-    const url = await this.createPresignedUrl(bucket, key);
+    const url = await this.getPresignedUrl(bucket, key);
 
-    return this.toPublicAccessUrl(url);
+    return {
+      key,
+      presignedUrl: url,
+      accessUrl: this.toPublicAccessUrl(url),
+    };
   }
 
   /**
@@ -258,7 +267,7 @@ export class S3Service {
 
   /**
    * 列出所有bucket
-   * @returns 
+   * @returns
    */
   public async listBuckets(): Promise<ListBucketResDTO> {
     const data = await this._s3Client.send(new ListBucketsCommand({}));
@@ -272,14 +281,14 @@ export class S3Service {
         });
       }
     }
-    
+
     return res;
   }
 
   /**
    * bucket是否存在
-   * @param bucket 
-   * @returns 
+   * @param bucket
+   * @returns
    */
   public async headBucket(bucket: string): Promise<HeadBucketResDTO> {
     const res: HeadBucketResDTO = {
@@ -307,7 +316,6 @@ export class S3Service {
       throw error;
     }
   }
-
 
   public async createBucket(bucket: string): Promise<boolean> {
     const cmd = new CreateBucketCommand({
@@ -344,14 +352,14 @@ export class S3Service {
 
   /**
    * 删除存储桶
-   * @param bucket 
-   * @returns 
+   * @param bucket
+   * @returns
    */
   public async deleteBucket(bucket: string): Promise<boolean> {
     const cmd = new DeleteBucketCommand({
       Bucket: bucket,
     });
-     await this._s3Client.send(cmd);
+    await this._s3Client.send(cmd);
     return true;
   }
 
@@ -368,8 +376,10 @@ export class S3Service {
     return this._s3Client.send(deleteObjectsCommand);
   }
 
-  public async listObjects(dto: ListBucketObjectsReqDTO): Promise<ListBucketObjectsResDTO> {
-    const {bucket, prefix, maxKeys, nextContinuationToken } = dto;
+  public async listObjects(
+    dto: ListBucketObjectsReqDTO,
+  ): Promise<ListBucketObjectsResDTO> {
+    const { bucket, prefix, maxKeys, nextContinuationToken } = dto;
     const cmd = new ListObjectsV2Command({
       Bucket: bucket,
     });
@@ -380,15 +390,15 @@ export class S3Service {
       cmd.input.MaxKeys = Number(maxKeys);
     }
     if (nextContinuationToken) {
-      cmd.input.ContinuationToken = nextContinuationToken
+      cmd.input.ContinuationToken = nextContinuationToken;
     }
     try {
       const res = new ListBucketObjectsResDTO();
-      const { Contents, IsTruncated, NextContinuationToken, KeyCount } = await this._s3Client.send(cmd);
+      const { Contents, IsTruncated, NextContinuationToken, KeyCount } =
+        await this._s3Client.send(cmd);
       res.isTruncated = IsTruncated;
       res.keyCount = KeyCount;
-      res.nextContinuationToken = NextContinuationToken,
-      res.list = [];
+      (res.nextContinuationToken = NextContinuationToken), (res.list = []);
       if (Contents?.length) {
         for (const item of Contents) {
           res.list.push({
@@ -396,20 +406,16 @@ export class S3Service {
             lastModified: item.LastModified,
             eTag: item.ETag,
             size: item.Size,
-          })
+          });
         }
       }
 
       return res;
     } catch (error) {
-      throw new S3Exception(
-        error.message,
-        {
-          cause: error,
-        }
-      )
+      throw new S3Exception(error.message, {
+        cause: error,
+      });
     }
-
   }
 
   private async deleteObject(bucket: string, key: string) {
@@ -438,18 +444,33 @@ export class S3Service {
   }
 
   /**
-   * 生成预签名文件地址
+   * 生成预签名文件地址用户文件上传
    * @param bucket 存储桶
    * @param key 文件key
    * @param expires 链接过期时间
-   * @returns 
+   * @returns
    */
-  public async createPresignedUrl(bucket: string, key: string, expires = 60): Promise<string> {
+  public async createPresignedUrl(
+    bucket: string,
+    key: string,
+    expires = 60,
+  ): Promise<string> {
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: key,
     });
     return getSignedUrl(this._s3Client, command, { expiresIn: expires });
+  }
+
+  /**
+   * 通过key获取文件下载链接
+   * @param bucket
+   * @param key
+   * @returns
+   */
+  public async getPresignedUrl(bucket: string, key: string) {
+    const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+    return getSignedUrl(this._s3Client, command, { expiresIn: 3600 });
   }
 
   public async copyObject(
